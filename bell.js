@@ -16,7 +16,7 @@ var DiscoveryModeListener = require('./component/buttonListeners/discovery-mode-
 process.on('SIGINT', function () {
     console.log("Caught interrupt signal");
     console.log("[INFO] Going offline");
-    sensorService.kill();
+//    sensorService.kill();
     console.log("[INFO] Done!");
     addEvent(db, doorbellId, 'OFFLINE');
     process.exit()
@@ -26,9 +26,9 @@ process.on('SIGINT', function () {
 var serviceAccount = require("./admin-cred.json");
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://doorbell-7c976.firebaseio.com"
+    databaseURL: "https://doorbell-cc841.firebaseio.com"
 });
-var storage = admin.storage().bucket("doorbell-7c976.appspot.com");
+var storage = admin.storage().bucket("doorbell-cc841.appspot.com");
 
 var db = admin.database();
 
@@ -40,13 +40,13 @@ gpio.setMode(gpio.MODE_BCM)
 let doorbellId = "voordeur";
 const notificationService = new NotificationService(admin);
 
-let sensorService = new SensorService(db, doorbellId);
-sensorService.setMapping({
-    "777C09A1": 'de la',
-    "777D55B1": "achterdeur",
-    "777D54F3": "voordeur"
-})
-sensorService.init();
+//let sensorService = new SensorService(db, doorbellId);
+//sensorService.setMapping({
+//    "777C09A1": 'de la',
+//    "777D55B1": "achterdeur",
+//    "777D54F3": "voordeur"
+//})
+//sensorService.init();
 
 let doorbellStateService = new DoorbellStateService(db, doorbellId);
 
@@ -67,7 +67,7 @@ let gongListener = new GongListener(gong, db, doorbellId, notificationService);
 button.addOnButtonDownListener(gongListener);
 button.addOnButtonUpListener(gongListener);
 
-let camListener = new CamListener(storage, notificationService);
+let camListener = new CamListener(doorbellId, storage, notificationService);
 button.addOnButtonDownListener(camListener);
 button.addOnButtonUpListener(camListener);
 
@@ -82,6 +82,7 @@ doorbellStateService.init()
 
 addEvent(db, doorbellId, 'ONLINE')
 console.log("[INFO] Going online");
+
 // setTimeout(() => {
 //     console.log('Simulating ring');
 //     button.simulateRing();

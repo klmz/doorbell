@@ -3,14 +3,18 @@ var { generateId, addEvent } = require('../../utils')
 
 
 class CamListener{
-    constructor(storage, notificationService){
+    constructor(doorbellId, storage, notificationService){
+	this.doorbellId = doorbellId;
         this.storage = storage;
         this.notificationService = notificationService;
         this.opts = {
-            callbackReturn: "buffer"
+            callbackReturn: "buffer",
+	    width: 640,
+	    height: 480,
+	    device: false
         };
         this.image = null;
-        
+
     }
     onDown(eventId){
         this.image = new Promise((resolve, reject) => {
@@ -39,7 +43,7 @@ class CamListener{
         this.image.then(async (imageData) => {
                 let file = await this.storage.file(filename)
                 await file.save(imageData);
-                
+
                 let url = (await file.getSignedUrl({
                     expires: new Date().getTime() + 604800,
                     action: 'read'
@@ -47,15 +51,17 @@ class CamListener{
 
                 console.log('Saving for tag: '+ eventId);
                 console.log(url);
-                this.notificationService.sendNotification(doorbellId, {
+                await this.notificationService.sendNotification(this.doorbellId, {
                     notification: {
                         title: 'Er belde iemand aan!',
-                        body: `Bij de deurbel ${doorbellId}.`,
+                        body: `Bij de deurbel ${this.doorbellId}.`,
                         type: 'RING',
+			tag: eventId,
                         image: url,
-                        tag
+                        icon: url
                     }
                 })
+		console.log('Notification sent...');
                 this.image = null;
             })
             .catch(() => {
