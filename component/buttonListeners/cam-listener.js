@@ -1,72 +1,66 @@
 var NodeWebcam = require("node-webcam");
-var { generateId, addEvent } = require('../../utils')
-
+var { addEvent } = require('../../utils')
+const URL = require('url');
 
 class CamListener{
-    constructor(doorbellId, storage, notificationService){
-	this.doorbellId = doorbellId;
-        this.storage = storage;
+    constructor(notificationService, doorbellId, db, camera, storage){
         this.notificationService = notificationService;
         this.opts = {
             callbackReturn: "buffer",
-	    width: 640,
-	    height: 480,
-	    device: false
+            rotation: 180
         };
         this.image = null;
+        this.doorbellId = doorbellId;
+        this.db = db;
+        this.camera = camera;
+        this.storage = storage;
+    }
+    async getImageUrl(url){
+         const path = URL.parse(url).pathname.split(".")[0].substring(1);
+         const files = await this.storage.getFiles({
+             prefix: path,
+             delimiter: "/",
+             autoPaginate: false
+         });
 
+         if(files[0].length == 0){
+             console.error(`[ERROR] could not find ${imageUrl}.`);
+             return;
+         }
+         
+         let imageUrl = (await files[0][0].getSignedUrl({
+                 expires: new Date().getTime() + 604800000,
+                 action: 'read'
+             }))[0]
+        return imageUrl;
     }
     onDown(eventId){
-        this.image = new Promise((resolve, reject) => {
-            NodeWebcam.capture("test_picture", this.opts, function (err, data) {
-                if (err) {
-                    reject(err);
-                }
-                resolve(data);
-            });
-        }).catch(error=>{
-            if(error.message == "No webcam found"){
-                console.log('[WARN] webcam not connected');
-                this.image = null;
-                return;
-            }
-            throw error;
-        });
+        this.image = this.camera.captureToDownloadLink();
     }
     onUp(eventId){
         if (!this.image) {
             return
         }
 
-        let filename = `images/${generateId(10)}.jpg`;
         let tag = eventId
-        this.image.then(async (imageData) => {
-                let file = await this.storage.file(filename)
-                await file.save(imageData);
-
-                let url = (await file.getSignedUrl({
-                    expires: new Date().getTime() + 604800,
-                    action: 'read'
-                }))[0]
-
-                console.log('Saving for tag: '+ eventId);
-                console.log(url);
-                await this.notificationService.sendNotification(this.doorbellId, {
-                    notification: {
-                        title: 'Er belde iemand aan!',
-                        body: `Bij de deurbel ${this.doorbellId}.`,
-                        type: 'RING',
-			tag: eventId,
-                        image: url,
-                        icon: url
-                    }
-                })
-		console.log('Notification sent...');
-                this.image = null;
+        this.image.then(async (url) =>{
+            addEvent(this.db, this.doorbellId, "RING", { tag: eventId, url: url})
+            // convert url to signed url
+            const imageUrl = await this.getImageUrl(url);
+            
+            this.notificationService.sendNotification(this.doorbellId, {
+                notification: {
+                    title: 'Er belde iemand aan!',
+                    body: `Bij de deurbel ${this.doorbellId}.`,
+                    type: 'RING',
+                    image: imageUrl,
+                    tag
+                }
             })
-            .catch(() => {
-                console.log("[DEBUG] No camera was found.")
-            })
+            this.image = null;
+        }).catch((e) => {
+            console.log("[DEBUG] Something went wrong with capturing the image: ",e)
+        })            
     }
 }
 

@@ -8,9 +8,11 @@ function addEvent(db, did, event, payload){
             type: event,
         }
     }
+    
     if(payload){
         event.payload = payload;
     }
+    
 
     return db.ref('doorbells/' + did + '/events/'+now()).set(event);
 }

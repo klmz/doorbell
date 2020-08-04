@@ -1,6 +1,10 @@
 class NotificationService{
-	constructor(admin){
+	constructor(admin, doorbellId){
 		this.admin = admin;
+		this.deviceTokens = {};
+		this.doorbellId = doorbellId;
+		this.subscribe();
+
 	}
 	
 	getSettings(tokenResponse){
@@ -11,31 +15,47 @@ class NotificationService{
 		}
 	}
 	
-	async getDeviceTokens(users, payload){
-		let tokenPromises = Object.keys(users.val()).map(async (uid) => {
-			const tokenPromise = await this.admin.database()
-				.ref(`/users/${uid}/gcm-ids`).once('value');
-			const tokenResponse = tokenPromise.val()
+	subscribe(){
+		const db = this.admin.database();
+		db.ref(`/doorbells/${this.doorbellId}/users`).on('value', (users) =>{
+			Object.keys(this.deviceTokens).forEach((uid) =>{
+				//unsubcribe
+				db.ref(`/users/${uid}/gcm-ids`).off();
+			})
+			this.deviceTokens = {};
 
-			const notificationSettings = this.getSettings(tokenResponse)
-			if(!notificationSettings.allowedTypes.includes(payload.notification.type.trim())){
-					console.log("This notification was not allowed to be send for this user", uid, notificationSettings.allowedTypes, 'doesnt have:', payload.notification.type)
-					return [];
-			}
-			if(notificationSettings.receiveNotifications){
-				return Object.keys(tokenResponse).filter((item) => item !== "settings");
-			}
-			
-			return [];	
-		})
-		let tokens = await Promise.all(tokenPromises);
-		return tokens.reduce((acc, x) => acc.concat(x), []);
+			Object.keys(users.val()).forEach( async (uid) =>{
+				db.ref(`/users/${uid}/gcm-ids`).on('value', (token) =>{
+					//save 
+					this.deviceTokens[uid] = token.val();
+					console.log(`deviceTokens[${uid}]`, this.deviceTokens[uid])
+				});;
+			})
+		});
 	}
 
-	async sendNotification(doorbellId, payload){
-		const users = await this.admin.database().ref(`/doorbells/${doorbellId}/users`).once('value');
-		let tokens = await this.getDeviceTokens(users, payload);
-		
+	getDeviceTokensLocal(payload){
+		let tokens = [];
+		Object.keys(this.deviceTokens).forEach(uid =>{
+			const token = this.deviceTokens[uid];
+			if(!token){
+				console.error(`[ERROR] Could not find token for ${uid}`);
+				return;
+			}
+			const notificationSettings = this.getSettings(token)
+			if(!notificationSettings.allowedTypes.includes(payload.notification.type.trim())){
+					console.log("This notification was not allowed to be send for this user", uid, notificationSettings.allowedTypes, 'doesnt have:', payload.notification.type)
+			}
+			if(notificationSettings.receiveNotifications){
+				tokens = tokens.concat(Object.keys(token).filter((item) => item !== "settings"))
+			}
+		})
+	
+		return tokens;	
+	}
+
+	async sendNotification(doorbellId, payload){		
+		let tokens = this.getDeviceTokensLocal(payload)
 		// Send notifications to all tokens.
 		if(tokens.length === 0) return;
 

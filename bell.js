@@ -11,7 +11,8 @@ var Button = require('./component/button');
 var CamListener = require('./component/buttonListeners/cam-listener');
 var GongListener = require('./component/buttonListeners/gong-listener');
 var DiscoveryModeListener = require('./component/buttonListeners/discovery-mode-listener');
-
+var Camera = require('./component/camera');
+const URL = require('url');
 // Setup gracefull terminiation
 process.on('SIGINT', function () {
     console.log("Caught interrupt signal");
@@ -26,10 +27,9 @@ process.on('SIGINT', function () {
 var serviceAccount = require("./admin-cred.json");
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://doorbell-cc841.firebaseio.com"
+    databaseURL: `https://${serviceAccount.project_id}.firebaseio.com`
 });
-var storage = admin.storage().bucket("doorbell-cc841.appspot.com");
-
+var storage = admin.storage().bucket(`${serviceAccount.project_id}.appspot.com`);
 var db = admin.database();
 
 //Setup GPIO
@@ -38,7 +38,7 @@ gpio.setMode(gpio.MODE_BCM)
 // Setup all my 'services'
 // Setup doorbell components
 let doorbellId = "voordeur";
-const notificationService = new NotificationService(admin);
+const notificationService = new NotificationService(admin, doorbellId);
 
 //let sensorService = new SensorService(db, doorbellId);
 //sensorService.setMapping({
@@ -67,9 +67,28 @@ let gongListener = new GongListener(gong, db, doorbellId, notificationService);
 button.addOnButtonDownListener(gongListener);
 button.addOnButtonUpListener(gongListener);
 
-let camListener = new CamListener(doorbellId, storage, notificationService);
+let camera  = new Camera(storage);
+let camListener = new CamListener(notificationService, doorbellId, db, camera, storage);
+
 button.addOnButtonDownListener(camListener);
 button.addOnButtonUpListener(camListener);
+eventService.addListener({
+    handlesEventType: (type) => type === "CAPTURE_IMAGE",
+    onEvent: async (event) => {
+        console.log('CAPUTREIMAGE', event);
+        if(event.payload.url){
+            return;
+        }
+
+        const imageUrl = await camera.captureToDownloadLink();
+
+        addEvent(db, doorbellId, 'CAPTURE_IMAGE', {
+            ...event.payload,
+            url: imageUrl
+        })
+    }
+})
+
 
 let discoveryModeListener = new DiscoveryModeListener(doorbellId, db, gong);
 doorbellStateService.addOnStateChangedListener(discoveryModeListener);
@@ -83,8 +102,9 @@ doorbellStateService.init()
 addEvent(db, doorbellId, 'ONLINE')
 console.log("[INFO] Going online");
 
-// setTimeout(() => {
-//     console.log('Simulating ring');
-//     button.simulateRing();
-// }, 5000)
+//setTimeout(() => {
+//    console.log('Simulating ring');
+//    button.simulateRing();
+//}, 4000)
+
 
