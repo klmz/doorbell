@@ -102,9 +102,9 @@ doorbellStateService.init()
 addEvent(db, doorbellId, 'ONLINE')
 console.log("[INFO] Going online");
 
-//setTimeout(() => {
+// setTimeout(() => {
 //    console.log('Simulating ring');
 //    button.simulateRing();
-//}, 4000)
+// }, 4000)
 
 
