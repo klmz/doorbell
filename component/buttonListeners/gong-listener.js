@@ -13,15 +13,6 @@ class GongListener{
     }
     onDown(eventId){
         this.gong.on();
-        addEvent(this.db, this.doorbellId, "RING", { tag: eventId})
-        //this.notificationService.sendNotification(this.doorbellId, {
-        //    notification: {
-        //        title: 'Er belde iemand aan!',
-        //        body: `Bij de deurbel ${this.doorbellId}.`,
-        //        type: 'RING',
-        //        tag: eventId
-         //   }
-        //})
     }
     onUp(){
         this.gong.off();

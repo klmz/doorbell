@@ -33,8 +33,7 @@ var storage = admin.storage().bucket(`${serviceAccount.project_id}.appspot.com`)
 var db = admin.database();
 
 //Setup GPIO
-gpio.setMode(gpio.MODE_BCM)
-
+gpio.setMode(gpio.MODE_BCM);
 // Setup all my 'services'
 // Setup doorbell components
 let doorbellId = "voordeur";
@@ -68,7 +67,7 @@ button.addOnButtonDownListener(gongListener);
 button.addOnButtonUpListener(gongListener);
 
 let camera  = new Camera(storage);
-let camListener = new CamListener(notificationService, doorbellId, db, camera, storage);
+let camListener = new CamListener(notificationService, doorbellId, db, camera, storage, button);
 
 button.addOnButtonDownListener(camListener);
 button.addOnButtonUpListener(camListener);
