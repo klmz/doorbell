@@ -17,7 +17,7 @@ const URL = require('url');
 process.on('SIGINT', function () {
     console.log("Caught interrupt signal");
     console.log("[INFO] Going offline");
-    sensorService.kill();
+//    sensorService.kill();
     console.log("[INFO] Done!");
     addEvent(db, doorbellId, 'OFFLINE');
     process.exit()
@@ -33,20 +33,19 @@ var storage = admin.storage().bucket(`${serviceAccount.project_id}.appspot.com`)
 var db = admin.database();
 
 //Setup GPIO
-gpio.setMode(gpio.MODE_BCM)
-
+gpio.setMode(gpio.MODE_BCM);
 // Setup all my 'services'
 // Setup doorbell components
 let doorbellId = "voordeur";
 const notificationService = new NotificationService(admin, doorbellId);
 
-let sensorService = new SensorService(db, doorbellId);
-sensorService.setMapping({
-    "777C09A1": 'de la',
-    "777D55B1": "achterdeur",
-    "777D54F3": "voordeur"
-})
-sensorService.init();
+//let sensorService = new SensorService(db, doorbellId);
+//sensorService.setMapping({
+//    "777C09A1": 'de la',
+//    "777D55B1": "achterdeur",
+//    "777D54F3": "voordeur"
+//})
+//sensorService.init();
 
 let doorbellStateService = new DoorbellStateService(db, doorbellId);
 
@@ -68,7 +67,8 @@ button.addOnButtonDownListener(gongListener);
 button.addOnButtonUpListener(gongListener);
 
 let camera  = new Camera(storage);
-let camListener = new CamListener(notificationService, doorbellId, db, camera, storage);
+let camListener = new CamListener(notificationService, doorbellId, db, camera, storage, button);
+
 button.addOnButtonDownListener(camListener);
 button.addOnButtonUpListener(camListener);
 eventService.addListener({
@@ -100,8 +100,10 @@ doorbellStateService.init()
 
 addEvent(db, doorbellId, 'ONLINE')
 console.log("[INFO] Going online");
-setTimeout(() => {
-    console.log('Simulating ring');
-    button.simulateRing();
-}, 4000)
+
+// setTimeout(() => {
+//    console.log('Simulating ring');
+//    button.simulateRing();
+// }, 4000)
+
 

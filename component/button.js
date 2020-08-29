@@ -11,6 +11,7 @@ class Button {
         this.onUpListeners = [];
         this.onResetListeners = [];
         this.latestEventId = null;
+        this.ignoreEvent = false;
         this.setupButton();
     }
 
@@ -56,12 +57,20 @@ class Button {
         this.buttonDown = false;
     }
     
+    eventIgnore() {
+        if(!this.ignoreEvent) {
+            this.ignoreEvent = true;
+            setTimeout(() => this.ignoreEvent = false, 10000);
+        }
+    }
+
     async onChange(channel, pressed) {
         if (this.gong.isIgnoring) return;
-        
+
         switch (true) {
+            
             case channel == this.channel: //handle button press
-                if (pressed) {
+                if (pressed && !this.buttonDown) {
                     this.latestEventId = generateId(30);
                     this.onDown(this.latestEventId)
                     this.buttonDown = true;
@@ -69,6 +78,7 @@ class Button {
                 } else {
                     this.onUp(this.latestEventId)
                     this.buttonDown = false;
+                    this.eventIgnore(); //Don't generate events on this button press for 1000ms
                 }
                 break;
             default:
