@@ -11,7 +11,7 @@
   "dependencies": {
     "array.prototype.flatmap": "^1.2.3",
     "firebase": "^7.14.5",
-    "firebase-admin": "^8.12.1",
+    "firebase-admin": "^11.4.1",
     "node-webcam": "^0.6.3",
     "python-bridge": "^1.1.0",
     "rpi-gpio": "^2.1.7"
